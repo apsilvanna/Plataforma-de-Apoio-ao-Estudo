@@ -1,1 +1,0 @@
-Server=localhost;Port=3306;Database=fecap_estudo;Uid=root;Pwd=;
