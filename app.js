@@ -136,7 +136,7 @@ class Discente extends Usuario {
   getHistorico() { return [...this.#historico]; }
   adicionarXp(pontos) { if (pontos > 0) this.#xpTotal += pontos; }
   obterTipoPerfil() { return "Discente"; }
-  gerarPainelResumo() { return `Discente: ${this.getNome()} — RA ${this.#ra} — ${this.#xpTotal} XP`; }
+  gerarPainelResumo() { return `Discente: ${this.getNome()} — ${this.#ra} — ${this.#xpTotal} XP`; }
   // Missão 5 — sobrecarga simulada: um método, três formas de chamada
   registrarEstudo(a, b, c, d) {
     if (a instanceof SessaoEstudo) {                                   // Forma 1
@@ -198,10 +198,38 @@ class ServicoAlertaResponsavel { // sem campos: apenas depende dos parâmetros
 
 /* ===== Missão 10 — Cliente do backend (C# + MySQL) ===== */
 class ClienteBackendEstudo {
-  #urlBase;
+  #urlBase; #local = false; #mem = [];
   constructor(urlBase = "http://localhost:5080") { this.#urlBase = urlBase; }
+  get modoLocal() { return this.#local; }
+  #lerLocal() { try { return JSON.parse(localStorage.getItem("estudo-sessoes")) || this.#mem; } catch { return this.#mem; } }
+  #gravarLocal(lista) { this.#mem = lista; try { localStorage.setItem("estudo-sessoes", JSON.stringify(lista)); } catch {} }
+  // Sem backend (ex.: GitHub Pages), simula as mesmas rotas guardando as sessões no navegador
+  #simular(caminho, opcoes) {
+    const [rota, query = ""] = caminho.split("?");
+    const nome = decodeURIComponent(rota.startsWith("/api/relatorio/") ? rota.slice(15) : new URLSearchParams(query).get("discente") || "");
+    const todas = this.#lerLocal();
+    const sessoes = todas.filter(s => s.discenteNome.toLowerCase().includes(nome.toLowerCase())).reverse();
+    const minutos = sessoes.reduce((t, s) => t + s.duracaoMinutos, 0);
+    if (opcoes?.method === "POST") {
+      const s = { id: todas.length + 1, dataRegistro: new Date().toISOString().slice(0, 16).replace("T", " "), ...JSON.parse(opcoes.body) };
+      this.#gravarLocal([...todas, s]); return s;
+    }
+    if (rota === "/api/sessoes") return sessoes;
+    if (rota === "/api/metas") return [{ metaMinutosSemana: 180, minutosCumpridos: minutos }];
+    if (rota.startsWith("/api/relatorio/")) {
+      const pct = Math.min(100, Math.round(minutos * 1000 / 180) / 10);
+      return { discente: nome, totalSessoes: sessoes.length, totalMinutosEstudados: minutos,
+        totalXpAcumulado: sessoes.reduce((t, s) => t + s.xpGanho, 0), metaMinutosSemana: 180, percentualMetaConcluida: pct,
+        statusAcompanhamento: pct >= 100 ? "Meta semanal concluída integralmente." : pct >= 50 ? "Progresso dentro do ritmo esperado." : "Atenção: progresso abaixo de 50% da meta semanal.",
+        sessoesRecentes: sessoes.slice(0, 10) };
+    }
+    return { online: true, modoBanco: "dados salvos neste navegador" };
+  }
   async #requisitar(caminho, opcoes) {
-    const resposta = await fetch(this.#urlBase + caminho, opcoes);
+    if (this.#local) return this.#simular(caminho, opcoes);
+    let resposta;
+    try { resposta = await fetch(this.#urlBase + caminho, { ...opcoes, signal: AbortSignal.timeout(4000) }); }
+    catch { this.#local = true; return this.#simular(caminho, opcoes); }
     const corpo = await resposta.json().catch(() => ({}));
     if (!resposta.ok) throw new Error(corpo.erro || `Erro HTTP ${resposta.status}`);
     return corpo;
@@ -239,7 +267,7 @@ class TelaEstudo {
       new Disciplina("ADS203", "Projeto Interdisciplinar (PI)", "Prática", 6)
     ];
     this.#discente = new Discente(3, "Lucas Silva", "lucas.silva@edu.fecap.br", "123", "RA-2026101");
-    this.#responsavel = new Responsavel(2, "Carlos Silva (Pai do Lucas)", "carlos@email.com", "123", "Pai");
+    this.#responsavel = new Responsavel(2, "Carlos Silva", "carlos@email.com", "123", "Pai");
     this.#meta = new MetaEstudo(180);
     this.#responsavel.vincularDiscente(this.#discente, this.#meta);
     this.#servico = new ServicoAlertaResponsavel();
@@ -293,7 +321,8 @@ class TelaEstudo {
       const rel = await this.#cliente.obterRelatorio(this.#discente.getNome());
       this.#discente.adicionarXp(rel.totalXpAcumulado);
       const st = await this.#cliente.obterStatus();
-      status.textContent = "Backend online — " + st.modoBanco; status.className = "badge on";
+      const loc = this.#cliente.modoLocal;
+      status.textContent = (loc ? "Modo local (sem backend) — " : "Backend online — ") + st.modoBanco; status.className = "badge " + (loc ? "loc" : "on");
       this.#atualizar();
     } catch {
       status.textContent = "Backend offline (inicie o iniciar_backend.bat)"; status.className = "badge off";
@@ -309,7 +338,7 @@ class TelaEstudo {
       this.#atualizar();
       try {
         await this.#cliente.salvarSessao(this.#discente.getNome(), sessao);
-        this.#toast("Sessão registrada e salva no banco! +" + sessao.calcularXp() + " XP");
+        this.#toast((this.#cliente.modoLocal ? "Sessão registrada e salva neste navegador! +" : "Sessão registrada e salva no banco! +") + sessao.calcularXp() + " XP");
       } catch (e) { this.#toast("Registrada só na tela — backend indisponível: " + e.message, true); }
     } catch (e) { this.#toast(e.message, true); }
   }
