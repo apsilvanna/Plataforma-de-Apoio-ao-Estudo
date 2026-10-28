@@ -4,14 +4,6 @@
 
 **Mini-Projeto PI · Front-end em JavaScript integrado a um backend C# + MySQL**
 
-![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-F7DF1E?logo=javascript&logoColor=black)
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
-![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
-![C#](https://img.shields.io/badge/Backend-C%23%20.NET-512BD4?logo=dotnet&logoColor=white)
-![MySQL](https://img.shields.io/badge/Banco-MySQL-4479A1?logo=mysql&logoColor=white)
-![GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-222?logo=github&logoColor=white)
-
-
 </div>
 
 ---
