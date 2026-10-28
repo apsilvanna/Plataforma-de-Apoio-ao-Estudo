@@ -11,7 +11,6 @@
 ![MySQL](https://img.shields.io/badge/Banco-MySQL-4479A1?logo=mysql&logoColor=white)
 ![GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-222?logo=github&logoColor=white)
 
-👩‍💻 **Autoria:** _(preencha seu nome e RA)_
 
 </div>
 
